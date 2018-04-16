@@ -67,7 +67,7 @@ class MetacriticPipeline(object):
 
         # Ensure that authorization passed, and that we can retrieve the board
         try:
-            game_board = self._client.get_board(config['trello_board_id'])
+            self._game_board = self._client.get_board(config['trello_board_id'])
         except trello.Unauthorized:
             print("Trello authorization failed.  Check api key and api secret.")
             raise
@@ -80,12 +80,19 @@ class MetacriticPipeline(object):
 
         # Retrieve all the cards, and create a dictionary with all of the game titles and cards
         self._card_collection = {}
-        for card in game_board.all_cards():
+        for card in self._game_board.all_cards():
             game_title = card.name
             re_var = re.search('(.*) \\[\\d+\\]', card.name)
             if re_var is not None:
                 game_title = re_var.group(1)
             self._card_collection[game_title] = card
+
+        # Get the list to add new cards to
+        try:
+            self._new_card_list = self._game_board.open_lists()[0]
+        except IndexError:
+            print("Trello board doesn't have any lists.  Create at least one list")
+            raise
 
     def process_item(self, item, spider):
         """
@@ -94,10 +101,15 @@ class MetacriticPipeline(object):
         :param spider:
         :return:       item if criteria is met (in this case >= Critic Score 80)
         """
+        new_title = item['title'] + ' [' + item['cscore'] + ']'
+
         if item['title'] in self._card_collection:
-            self._card_collection[item['title']].set_name(item['title'] +
-                                                          ' [' + item['cscore'] + ']')
+            # Update title with Metascore if it already exists (might be same as previous)
+            self._card_collection[item['title']].set_name(new_title)
         if int(item['cscore']) >= 80:
+            if item['title'] not in self._card_collection:
+                # Create a new card if MetaCritic > 80 and card isn't already on the board
+                self._new_card_list.add_card(new_title)
             return item
         raise DropItem("Critic score too low for %s" % item)
 
