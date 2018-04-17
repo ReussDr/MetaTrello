@@ -3,10 +3,10 @@ Item pipeline code for processing items retrieved from MetaCritic
 """
 
 from __future__ import print_function
-import json
 import re
 import os
 import trello
+import configparser
 
 def get_trello_properties():
     """
@@ -15,22 +15,22 @@ def get_trello_properties():
     :return: Dictionary with trello connection parameters
     """
     config = {}
-    # Read properties from trello_config.json if it is available
-    # TODO Change the file format to something other than json (that allows comments)
-    try:
-        with open('trello_config.json', 'r') as config_file:
-            config = json.load(config_file)
-    except IOError:
-        print("Failed to read config file trello_config.json.",
-              "Falling back to reading environment variables")
+    # Read properties from trello_config.ini if it is available
+    config = configparser.ConfigParser()
+    config.read('trello_config.ini')
+
+    if 'Trello API Keys' not in config:
+        config['Trello API Keys'] = {}
+    if 'Trello Board Settings' not in config:
+        config['Trello Board Settings'] = {}
 
     # If Environment variables are set, they override the trello_config.json
     if os.environ.get('TRELLO_API_KEY') is not None:
-        config['trello_api_key'] = os.environ.get('TRELLO_API_KEY')
+        config['Trello API Keys']['trello_api_key'] = os.environ.get('TRELLO_API_KEY')
     if os.environ.get('TRELLO_API_SECRET') is not None:
-        config['trello_api_secret'] = os.environ.get('TRELLO_API_SECRET')
+        config['Trello API Keys']['trello_api_secret'] = os.environ.get('TRELLO_API_SECRET')
     if os.environ.get('TRELLO_BOARD_ID') is not None:
-        config['trello_board_id'] = os.environ.get('TRELLO_BOARD_ID')
+        config['Trello Board Settings']['trello_board_id'] = os.environ.get('TRELLO_BOARD_ID')
 
     return config
 
@@ -62,15 +62,15 @@ class TrelloWrapper(object):
         # Initialize trello client
         print("Inside Init")
         self._client = trello.TrelloClient(
-            api_key=self._config['trello_api_key'],
-            api_secret=self._config['trello_api_secret'],
+            api_key=self._config['Trello API Keys']['trello_api_key'],
+            api_secret=self._config['Trello API Keys']['trello_api_secret'],
             # token='your-oauth-token',
             # token_secret='your-oauth-token-secret'
         )
 
         # Ensure that authorization passed, and that we can retrieve the board
         try:
-            self._game_board = self._client.get_board(self._config['trello_board_id'])
+            self._game_board = self._client.get_board(self._config['Trello Board Settings']['trello_board_id'])
         except trello.Unauthorized:
             print("Trello authorization failed.  Check api key and api secret.")
             raise
@@ -107,6 +107,8 @@ class TrelloWrapper(object):
     def _initialize_board_list(self):
         print(self._game_board.all_lists())
         for board in self._game_board.all_lists():
+            #print(board, board.pos)
+
             if board.name == "Owned":
                 self._board_dict["Owned"] = board
             if board.name == "Playing":
@@ -135,15 +137,19 @@ class TrelloWrapper(object):
             self._new_card_list.add_card(new_title)
 
     def update_game_status(self, game_name, percentage):
-        # TODO Add logic so that cards won't be moved out of certain categories if you have more lists (on-hold, etc)
-        print(self._board_dict)
+        """
 
+        :param game_name:
+        :param percentage:
+        :return:
+        """
         if game_name in self._card_collection:
-            if int(percentage) == 100:
+            game_list_position = self._card_collection[game_name].get_list().pos
+            if int(percentage) == 100 and game_list_position < self._board_dict["Completed"].pos:
                 self._card_collection[game_name].change_list(self._board_dict["Completed"].id)
-            elif int(percentage) > 0:
+            elif int(percentage) > 0 and game_list_position < self._board_dict["Playing"].pos:
                 self._card_collection[game_name].change_list(self._board_dict["Playing"].id)
-            else:
+            elif game_list_position < self._board_dict["Owned"].pos:
                 self._card_collection[game_name].change_list(self._board_dict["Owned"].id)
 
         #if game_name in self._card_collection:
