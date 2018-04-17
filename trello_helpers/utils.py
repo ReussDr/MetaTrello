@@ -44,9 +44,11 @@ class TrelloWrapper(object):
         Initialization needs to connect to trello, and pull a dictionary of all titles/cards.
         This makes it easy for process_item to update card titles and create new cards
         """
+        self._board_dict = {}
         self._config = get_trello_properties()
         self._initialize_connection()
         self._initialize_card_collection()
+        self._initialize_board_list()
 
     def _initialize_connection(self):
         """
@@ -102,6 +104,17 @@ class TrelloWrapper(object):
             print("Trello board doesn't have any lists.  Create at least one list")
             raise
 
+    def _initialize_board_list(self):
+        print(self._game_board.all_lists())
+        for board in self._game_board.all_lists():
+            if board.name == "Owned":
+                self._board_dict["Owned"] = board
+            if board.name == "Playing":
+                self._board_dict["Playing"] = board
+            if board.name == "Completed":
+                self._board_dict["Completed"] = board
+
+
     def add_game_or_update_score(self, game_name, score):
         """
         Update
@@ -120,3 +133,17 @@ class TrelloWrapper(object):
         if int(score) >= 80 and game_name not in self._card_collection:
             # Create a new card if MetaCritic > 80 and card isn't already on the board
             self._new_card_list.add_card(new_title)
+
+    def update_game_status(self, game_name, percentage):
+        # TODO Add logic so that cards won't be moved out of certain categories if you have more lists (on-hold, etc)
+        print(self._board_dict)
+
+        if game_name in self._card_collection:
+            if int(percentage) == 100:
+                self._card_collection[game_name].change_list(self._board_dict["Completed"].id)
+            elif int(percentage) > 0:
+                self._card_collection[game_name].change_list(self._board_dict["Playing"].id)
+            else:
+                self._card_collection[game_name].change_list(self._board_dict["Owned"].id)
+
+        #if game_name in self._card_collection:
