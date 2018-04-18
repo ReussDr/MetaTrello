@@ -19,8 +19,9 @@ You'll need both the key and the token.  Edit trello_config.ini and change the t
 
 You may need to install some pip modules.  In particular py-trello and scrapy.
 
-`pip install py-trello`
-`pip install scrapy`
+```
+pip install py-trello
+pip install scrapy```
 
 Note: If you are on a Mac, you may need to run `sudo -H pip <module_name>`
 
