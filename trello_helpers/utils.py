@@ -6,6 +6,7 @@ from __future__ import print_function
 import re
 import os
 import configparser
+import sys
 import trello
 
 def get_trello_properties():
@@ -44,7 +45,7 @@ class TrelloWrapper(object):
         Initialization needs to connect to trello, and pull a dictionary of all titles/cards.
         This makes it easy for process_item to update card titles and create new cards
         """
-        self._board_dict = {}
+        self._board_lists = {}
         self._config = get_trello_properties()
         self._initialize_connection()
         self._initialize_card_collection()
@@ -70,7 +71,8 @@ class TrelloWrapper(object):
 
         # Ensure that authorization passed, and that we can retrieve the board
         try:
-            self._game_board = self._client.get_board(self._config['Trello Board Settings']['trello_board_id'])
+            self._game_board = self._client.get_board(self._config['Trello Board Settings']
+                                                      ['trello_board_id'])
         except trello.Unauthorized:
             print("Trello authorization failed.  Check api key and api secret.")
             raise
@@ -97,24 +99,26 @@ class TrelloWrapper(object):
                 game_title = re_var.group(1)
             self._card_collection[game_title] = card
 
-        # Get the list to add new cards to
-        try:
-            self._new_card_list = self._game_board.open_lists()[0]
-        except IndexError:
-            print("Trello board doesn't have any lists.  Create at least one list")
-            raise
-
     def _initialize_board_list(self):
         print(self._game_board.all_lists())
-        for board in self._game_board.all_lists():
-            #print(board, board.pos)
 
-            if board.name == "Owned":
-                self._board_dict["Owned"] = board
-            if board.name == "Playing":
-                self._board_dict["Playing"] = board
-            if board.name == "Completed":
-                self._board_dict["Completed"] = board
+        board_list = ["todo", "owned", "started", "completed"]
+        found_all_boards = True
+        for board_to_find in board_list:
+            board_found = False
+            for board in self._game_board.all_lists():
+                if board.name == self._config["Trello Board Settings"]["trello_list_" + board_to_find]:
+                    self._board_lists[board_to_find] = board
+                    board_found = True
+            if board_found is False:
+                print("Failed to find list for status", board_to_find,
+                      "(was expecting",
+                      self._config["Trello Board Settings"]["trello_list_" + board_to_find], ")")
+                found_all_boards = False
+        if found_all_boards is False:
+            print("Error: Failed to find all boards.",
+                  "Change the settings in trello_config.ini or create new lists and run again")
+            sys.exit(1)
 
         # Build a dictionary of all the labels on the board
         self._label_dict = {}
@@ -146,7 +150,7 @@ class TrelloWrapper(object):
 
         if int(score) >= 80 and game_name not in self._card_collection:
             # Create a new card if MetaCritic > 80 and card isn't already on the board
-            new_card = self._new_card_list.add_card(new_title)
+            new_card = self._board_lists["todo"].add_card(new_title)
             new_card.add_label(self._label_dict[platform])
 
     def update_game_status(self, game_name, percentage):
@@ -158,11 +162,11 @@ class TrelloWrapper(object):
         """
         if game_name in self._card_collection:
             game_list_position = self._card_collection[game_name].get_list().pos
-            if int(percentage) == 100 and game_list_position < self._board_dict["Completed"].pos:
-                self._card_collection[game_name].change_list(self._board_dict["Completed"].id)
-            elif int(percentage) > 0 and game_list_position < self._board_dict["Playing"].pos:
-                self._card_collection[game_name].change_list(self._board_dict["Playing"].id)
-            elif game_list_position < self._board_dict["Owned"].pos:
-                self._card_collection[game_name].change_list(self._board_dict["Owned"].id)
+            if int(percentage) == 100 and game_list_position < self._board_lists["completed"].pos:
+                self._card_collection[game_name].change_list(self._board_lists["completed"].id)
+            elif int(percentage) > 0 and game_list_position < self._board_lists["started"].pos:
+                self._card_collection[game_name].change_list(self._board_lists["started"].id)
+            elif game_list_position < self._board_lists["owned"].pos:
+                self._card_collection[game_name].change_list(self._board_lists["owned"].id)
 
         #if game_name in self._card_collection:
