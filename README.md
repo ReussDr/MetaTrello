@@ -21,7 +21,8 @@ You may need to install some pip modules.  In particular py-trello and scrapy.
 
 ```
 pip install py-trello
-pip install scrapy```
+pip install scrapy
+```
 
 Note: If you are on a Mac, you may need to run `sudo -H pip <module_name>`
 
