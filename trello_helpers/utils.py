@@ -9,6 +9,7 @@ import configparser
 import sys
 import trello
 
+
 def get_trello_properties():
     """
     Read trello connection properties from the config file or environment variables
