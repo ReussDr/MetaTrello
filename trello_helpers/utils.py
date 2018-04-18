@@ -88,6 +88,7 @@ class TrelloWrapper(object):
         """
         Retrieves all the cards on the current board,
         and stores them in a dictionary for easy lookup
+
         :return:
         """
         # Retrieve all the cards, and create a dictionary with all of the game titles and cards
@@ -100,6 +101,12 @@ class TrelloWrapper(object):
             self._card_collection[game_title] = card
 
     def _initialize_board_list(self):
+        """
+        Check the board lists, and ensure there is a list for todo, owned, started and complted
+        These are as named in trello_config.ini
+
+        :return:
+        """
         print(self._game_board.all_lists())
 
         board_list = ["todo", "owned", "started", "completed"]
@@ -128,7 +135,8 @@ class TrelloWrapper(object):
 
     def add_game_or_update_score(self, game_name, platform, score):
         """
-        Update
+        Add a new card for a game, or update an existing card (typically if the score has changed)
+
         :param game_name: game_name (with score stripped off)
         :param score:     Metacritic critic score
         :return:
@@ -155,8 +163,15 @@ class TrelloWrapper(object):
 
     def update_game_status(self, game_name, percentage):
         """
+        Moves cards to the appropriate column (but only moves them to the right)
+        Information is passed in from a TrueAchievements collections csv file.
 
-        :param game_name:
+        [Lists are as specified in trello_config.ini]
+        Games that are 100% completed are moved to the completed list
+        Games that are started (>0% completion) are moved to the started list
+        Games that are in the collection are added to the owned list
+
+        :param game_name:  Name of the game
         :param percentage:
         :return:
         """
@@ -169,4 +184,7 @@ class TrelloWrapper(object):
             elif game_list_position < self._board_lists["owned"].pos:
                 self._card_collection[game_name].change_list(self._board_lists["owned"].id)
 
-        #if game_name in self._card_collection:
+        # TODO Fuzzy matching of game names
+        # TODO Maybe query the user about close matches, and store that data for future comparisons
+        #      In particular this will help with episodic games, which represent a single title but
+        #      multiple metacrtiic reviews
