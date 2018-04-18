@@ -38,6 +38,7 @@ class MetacriticSpider(BaseSpider):
             item['cscore'] = ''.join(site.css("div.metascore_w::text").extract())
             item['uscore'] = ''.join(site.css("span.textscore_favorable::text").extract())
             item['date'] = ''.join(site.css("div.product_date::text").extract()).strip()
+            item['platform'] = "Xbox One"
             items.append(item)
 
         return items

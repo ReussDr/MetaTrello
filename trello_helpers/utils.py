@@ -5,8 +5,8 @@ Item pipeline code for processing items retrieved from MetaCritic
 from __future__ import print_function
 import re
 import os
-import trello
 import configparser
+import trello
 
 def get_trello_properties():
     """
@@ -116,25 +116,38 @@ class TrelloWrapper(object):
             if board.name == "Completed":
                 self._board_dict["Completed"] = board
 
+        # Build a dictionary of all the labels on the board
+        self._label_dict = {}
+        for label in self._game_board.get_labels():
+            print(label)
+            self._label_dict[label.name] = label
 
-    def add_game_or_update_score(self, game_name, score):
+    def add_game_or_update_score(self, game_name, platform, score):
         """
         Update
         :param game_name: game_name (with score stripped off)
         :param score:     Metacritic critic score
         :return:
         """
+        # If there is no label for this platform add a new one
+        if platform not in self._label_dict:
+            self._label_dict[platform] = self._game_board.add_label(platform, "green")
+
         new_title = game_name + ' [' + score + ']'
 
-        #Update the game card if it exists (regardless of score)
+        # Update the game card if it exists (regardless of score)
         if game_name in self._card_collection:
             # Update title with Metascore if it already exists (might be same as previous)
             if self._card_collection[game_name].name != new_title:
                 self._card_collection[game_name].set_name(new_title)
+            # Add XBox One label if it isn't already in the list
+            if self._label_dict[platform] not in self._card_collection[game_name].labels:
+                self._card_collection[game_name].add_label(self._label_dict[platform])
 
         if int(score) >= 80 and game_name not in self._card_collection:
             # Create a new card if MetaCritic > 80 and card isn't already on the board
-            self._new_card_list.add_card(new_title)
+            new_card = self._new_card_list.add_card(new_title)
+            new_card.add_label(self._label_dict[platform])
 
     def update_game_status(self, game_name, percentage):
         """

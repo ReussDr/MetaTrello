@@ -30,5 +30,5 @@ class MetacriticPipeline(object):
         :param spider:
         :return:       item if criteria is met (in this case >= Critic Score 80)
         """
-        self._trello_wrapper.add_game_or_update_score(item['title'], item['cscore'])
+        self._trello_wrapper.add_game_or_update_score(item['title'], item['platform'], item['cscore'])
         return item

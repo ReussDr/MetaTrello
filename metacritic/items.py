@@ -12,6 +12,7 @@ class MetacriticItem(scrapy.Item):
     # define the fields for your item here like:
     # name = scrapy.Field()
     title = scrapy.Field()  # Game title
+    platform = scrapy.Field() # Game platform
     link = scrapy.Field()  # Link to individual game page
     cscore = scrapy.Field()  # Critic score
     uscore = scrapy.Field()  # User score
